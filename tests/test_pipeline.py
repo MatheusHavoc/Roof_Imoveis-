@@ -10,7 +10,9 @@ from roof_imoveis.pipeline import load_dataset, missing_summary, run_pipeline
 
 def test_load_dataset_normalizes_columns(tmp_path):
     dataset = tmp_path / "sample.csv"
-    pd.DataFrame({"Sale Price": [100, None], "Zip Code": [1, 2]}).to_csv(dataset, index=False)
+    pd.DataFrame({"Sale Price": [100, None], "Zip Code": [1, 2]}).to_csv(
+        dataset, index=False
+    )
     df = load_dataset(dataset)
     assert list(df.columns) == ["sale_price", "zip_code"]
 

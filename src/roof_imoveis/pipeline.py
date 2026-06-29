@@ -43,7 +43,9 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return cleaned
 
 
-def load_dataset(path: str | Path, required_columns: Sequence[str] = ()) -> pd.DataFrame:
+def load_dataset(
+    path: str | Path, required_columns: Sequence[str] = ()
+) -> pd.DataFrame:
     """Load a CSV or Excel dataset and validate required columns."""
     dataset_path = Path(path)
     if not dataset_path.exists():
@@ -65,9 +67,15 @@ def load_dataset(path: str | Path, required_columns: Sequence[str] = ()) -> pd.D
 def missing_summary(df: pd.DataFrame) -> pd.DataFrame:
     """Return null counts and percentages by column."""
     total_rows = len(df)
-    summary = pd.DataFrame({"column": df.columns, "missing_count": df.isna().sum().values})
-    summary["missing_pct"] = 0.0 if total_rows == 0 else summary["missing_count"] / total_rows
-    return summary.sort_values(["missing_count", "column"], ascending=[False, True]).reset_index(drop=True)
+    summary = pd.DataFrame(
+        {"column": df.columns, "missing_count": df.isna().sum().values}
+    )
+    summary["missing_pct"] = (
+        0.0 if total_rows == 0 else summary["missing_count"] / total_rows
+    )
+    return summary.sort_values(
+        ["missing_count", "column"], ascending=[False, True]
+    ).reset_index(drop=True)
 
 
 def duplicate_summary(df: pd.DataFrame) -> dict[str, int]:
@@ -86,27 +94,40 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
 def price_summary(df: pd.DataFrame) -> pd.DataFrame:
     """Return housing-price summaries when King County price columns are present."""
     if CONFIG.target_column not in df.columns:
-        LOGGER.info("Skipping price summary; missing optional column: %s", CONFIG.target_column)
+        LOGGER.info(
+            "Skipping price summary; missing optional column: %s", CONFIG.target_column
+        )
         return pd.DataFrame()
 
-    group_columns = [column for column in ("bedrooms", "bathrooms") if column in df.columns]
+    group_columns = [
+        column for column in ("bedrooms", "bathrooms") if column in df.columns
+    ]
     if not group_columns:
         return pd.DataFrame(
             {
                 "metric": ["price_mean", "price_median"],
-                "value": [float(df[CONFIG.target_column].mean()), float(df[CONFIG.target_column].median())],
+                "value": [
+                    float(df[CONFIG.target_column].mean()),
+                    float(df[CONFIG.target_column].median()),
+                ],
             }
         )
 
     return (
         df.groupby(group_columns, dropna=False)
-        .agg(records=(CONFIG.target_column, "size"), avg_price=(CONFIG.target_column, "mean"), median_price=(CONFIG.target_column, "median"))
+        .agg(
+            records=(CONFIG.target_column, "size"),
+            avg_price=(CONFIG.target_column, "mean"),
+            median_price=(CONFIG.target_column, "median"),
+        )
         .reset_index()
         .sort_values("records", ascending=False)
     )
 
 
-def run_pipeline(input_path: str | Path, output_dir: str | Path = "data/processed") -> dict[str, Any]:
+def run_pipeline(
+    input_path: str | Path, output_dir: str | Path = "data/processed"
+) -> dict[str, Any]:
     """Run local profiling and optional housing-price summaries for an available dataset."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -119,16 +140,24 @@ def run_pipeline(input_path: str | Path, output_dir: str | Path = "data/processe
     numeric.to_csv(output_path / "numeric_summary.csv", index=False)
     if not prices.empty:
         prices.to_csv(output_path / "price_summary.csv", index=False)
-    (output_path / "dataset_metrics.json").write_text(json.dumps(duplicates, indent=2), encoding="utf-8")
+    (output_path / "dataset_metrics.json").write_text(
+        json.dumps(duplicates, indent=2), encoding="utf-8"
+    )
     LOGGER.info("Pipeline completed for %s", CONFIG.project_name)
-    return {"rows": duplicates["row_count"], "duplicate_rows": duplicates["duplicate_rows"], "outputs": str(output_path)}
+    return {
+        "rows": duplicates["row_count"],
+        "duplicate_rows": duplicates["duplicate_rows"],
+        "outputs": str(output_path),
+    }
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Create CLI parser."""
     parser = argparse.ArgumentParser(description=CONFIG.project_name)
     parser.add_argument("--input", required=True, help="Path to raw CSV or Excel file.")
-    parser.add_argument("--output", default="data/processed", help="Directory for generated artifacts.")
+    parser.add_argument(
+        "--output", default="data/processed", help="Directory for generated artifacts."
+    )
     return parser
 
 
