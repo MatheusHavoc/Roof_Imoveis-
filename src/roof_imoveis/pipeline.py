@@ -18,18 +18,16 @@ class DataValidationError(ValueError):
 
 @dataclass(frozen=True)
 class ProjectConfig:
-    """Configuration for a portfolio data pipeline."""
+    """Configuration for the King County housing profiling pipeline."""
 
     project_name: str
     default_dataset: str
-    target_column: str | None = None
-    required_columns: tuple[str, ...] = ()
+    target_column: str = "price"
 
 
 CONFIG = ProjectConfig(
-    project_name="Housing price analysis",
+    project_name="King County housing price analysis",
     default_dataset="kc_house_data.csv",
-    target_column="price",
 )
 
 
@@ -85,16 +83,42 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
     return numeric_df.describe().transpose().reset_index(names="column")
 
 
+def price_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """Return housing-price summaries when King County price columns are present."""
+    if CONFIG.target_column not in df.columns:
+        LOGGER.info("Skipping price summary; missing optional column: %s", CONFIG.target_column)
+        return pd.DataFrame()
+
+    group_columns = [column for column in ("bedrooms", "bathrooms") if column in df.columns]
+    if not group_columns:
+        return pd.DataFrame(
+            {
+                "metric": ["price_mean", "price_median"],
+                "value": [float(df[CONFIG.target_column].mean()), float(df[CONFIG.target_column].median())],
+            }
+        )
+
+    return (
+        df.groupby(group_columns, dropna=False)
+        .agg(records=(CONFIG.target_column, "size"), avg_price=(CONFIG.target_column, "mean"), median_price=(CONFIG.target_column, "median"))
+        .reset_index()
+        .sort_values("records", ascending=False)
+    )
+
+
 def run_pipeline(input_path: str | Path, output_dir: str | Path = "data/processed") -> dict[str, Any]:
-    """Run the reusable data-quality pipeline and write artifacts."""
+    """Run local profiling and optional housing-price summaries for an available dataset."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    df = load_dataset(input_path, required_columns=CONFIG.required_columns)
+    df = load_dataset(input_path)
     missing = missing_summary(df)
     numeric = numeric_summary(df)
     duplicates = duplicate_summary(df)
+    prices = price_summary(df)
     missing.to_csv(output_path / "missing_summary.csv", index=False)
     numeric.to_csv(output_path / "numeric_summary.csv", index=False)
+    if not prices.empty:
+        prices.to_csv(output_path / "price_summary.csv", index=False)
     (output_path / "dataset_metrics.json").write_text(json.dumps(duplicates, indent=2), encoding="utf-8")
     LOGGER.info("Pipeline completed for %s", CONFIG.project_name)
     return {"rows": duplicates["row_count"], "duplicate_rows": duplicates["duplicate_rows"], "outputs": str(output_path)}
