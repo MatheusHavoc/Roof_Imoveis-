@@ -1,10 +1,17 @@
 # Roof Imoveis - Housing Price Analysis
 
-Professional Python project for housing price analysis using the King County house sales dataset. The original notebook is preserved, and reusable pipeline code was added under `src/`.
+This repository contains the original housing-price notebook and a new lightweight Python profiling layer under `src/roof_imoveis/`.
 
-## Staff Data Engineer assessment
+## What this PR changes
 
-This is currently the strongest portfolio repository. It contains a real dataset, quality checks, exploratory analysis and predictive modeling. The main improvement needed was engineering structure: packaging reusable logic, documenting execution and adding tests.
+The notebook remains the source of the full EDA and modeling workflow. The Python code added here is an engineering foundation, not a full rewrite of the notebook. It provides:
+
+- local CSV/Excel ingestion with explicit errors;
+- normalized column names;
+- missing-value and numeric profiling outputs;
+- duplicate-row metrics;
+- an optional `price_summary.csv` when the dataset includes the `price` column;
+- tests for ingestion and profiling behavior.
 
 ## Repository structure
 
@@ -18,13 +25,14 @@ This is currently the strongest portfolio repository. It contains a real dataset
 ├── images/
 ├── notebooks/
 ├── src/roof_imoveis/
-│   ├── __init__.py
-│   └── pipeline.py
 ├── tests/
-│   └── test_pipeline.py
 ├── requirements.txt
 └── README.md
 ```
+
+## Dataset requirement
+
+This repository already contains `kc_house_data.csv` at the root. For a cleaner project layout, future runs can copy it to `data/raw/kc_house_data.csv`, but the current command below uses the existing root file.
 
 ## How to run
 
@@ -38,18 +46,21 @@ python -m roof_imoveis.pipeline --input kc_house_data.csv --output data/processe
 
 On Linux/macOS, use `source .venv/bin/activate`.
 
-## What the Python pipeline does
+## Outputs
 
-- Loads CSV or Excel data with explicit error handling.
-- Normalizes column names for downstream processing.
-- Produces missing-value summaries.
-- Produces numeric descriptive statistics.
-- Produces duplicate-row metrics.
-- Writes artifacts to `data/processed/`.
+Always generated when the input file exists:
+
+- `data/processed/missing_summary.csv`
+- `data/processed/numeric_summary.csv`
+- `data/processed/dataset_metrics.json`
+
+Generated only when the expected housing column exists:
+
+- `data/processed/price_summary.csv`
 
 ## Current limitations
 
-- The richest modeling workflow still lives in the notebook.
-- Model training should be moved into a dedicated `modeling.py` module in a later PR.
-- The project should add data contracts for expected columns and value ranges.
-- Metrics from the notebook should be exported into reproducible reports.
+- Model training still lives in the notebook.
+- This PR does not add a production-grade training pipeline.
+- Data contracts for expected columns and valid ranges still need to be formalized.
+- Notebook metrics should be exported to reproducible reports in future work.
